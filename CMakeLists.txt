@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.18)
 project(tensorrt_cpp_api)
-
+set(cmake_build_type debug)
 # Use ccache to speed up rebuilds
 include(cmake/ccache.cmake)
 
@@ -26,7 +26,7 @@ find_package(fmt REQUIRED)
 add_library(tensorrt_cpp_api SHARED
         src/engine.cpp)
 
-target_include_directories(tensorrt_cpp_api PUBLIC ${OpenCV_INCLUDE_DIRS} ${CUDA_INCLUDE_DIRS} ${TensorRT_INCLUDE_DIRS} include include/interfaces)
+target_include_directories(tensorrt_cpp_api PUBLIC ${OpenCV_INCLUDE_DIRS} ${CUDA_INCLUDE_DIRS} ${TensorRT_INCLUDE_DIRS} include include/interfaces . )
 target_link_libraries(tensorrt_cpp_api PUBLIC ${OpenCV_LIBS} ${CUDA_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT} ${TensorRT_LIBRARIES} fmt::fmt)
 
 add_executable(swap_face src/main.cpp)
