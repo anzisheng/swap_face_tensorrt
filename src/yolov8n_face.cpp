@@ -50,12 +50,36 @@ std::vetor<std::vector<cv::cuda::GpuMat>> YoloV8_face::preprocess(const cv::cuda
     {
         //only resize if not already the right size to avoid unnecessary copy
         resized = Engine<float>::resizedKeepAspectRatioPadRightBottom(rgbMat, inputDims[0].d[1], inputDims[0].d[2]);
+        //convert to format expected by our inference engine
+        //The reason for the strange format is because it supports models with multiple inpus as well as batching
+        //In our case thought,  the model only has a single input and we are using a batch size of 1.
+        std::vector<cv:cuda::GpuMat> input{std::move(resized)};
+        std::vector<std::vector<cv::cuda::GpuMat>> inputs{std::move(input)};
+
+        //These params will be used in the post-processing stage
+        m_imgHeight = rgbMat.rows;
+        m_imgWidth = rgbMat.cols;
+        m_ratio = 1.f / std::min(inputDims[0].d[2] / static_cast<float>(rgbMat.cols), inputDims[0].d[1] / static_cast<float>(rgbMat.rows));
+        return inputs;
 
     }
+}
+    
+std::vector<Object> YoloV8_face::detectObjects(const cv::cuda::GpuMat& inputImageBGR){
+    const auto input = preprocess(inputImageBGR);
+    
+    std::vector<std::vector<ste::vector<float>>> featureVectors; 
+    auto succ = m_trtEngine->runInference(input, featureVectors);
+    //check if our model does only detect object detection
     
 
 
-}
+
+
+
+}    
+
+
 
 
 
