@@ -20,9 +20,9 @@ int main(int argc, char *argv[]) {
     std::cout << "object sizes: " << object.size() << std::endl;
     std::cout << "hello, world" <<std::endl;
 
-    //#ifdef SHOW  
+    #ifdef SHOW  
      // draw the bounding box on the image
      yoloV8.drawObjectLabels(source_img, object);
-    //#endif
+    #endif
     return 0;
 }

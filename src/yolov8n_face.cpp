@@ -259,7 +259,7 @@ void YoloV8_face::drawObjectLabels(cv::Mat &image, const std::vector<Object> &ob
         int y = object.rect.y + 1;
         //std::cout <<"box by trt is "<<x<< "  "<<y<<"  " << labelSize.width<<"  " << labelSize.height + baseLine << std::endl;
         
-//#ifdef SHOW
+#ifdef SHOW
         
         cv::rectangle(image, rect, color * 255, scale + 1);
         std::cout << "draw......" << std::endl;
@@ -268,7 +268,7 @@ void YoloV8_face::drawObjectLabels(cv::Mat &image, const std::vector<Object> &ob
         cv::rectangle(image, cv::Rect(cv::Point(x, y), cv::Size(labelSize.width, labelSize.height + baseLine)), txt_bk_color, -1);
 
         cv::putText(image, text, cv::Point(x, y + labelSize.height), cv::FONT_HERSHEY_SIMPLEX, 0.35 * scale, txtColor, scale);
-//#endif
+#endif
         // Pose estimation
         
     }
