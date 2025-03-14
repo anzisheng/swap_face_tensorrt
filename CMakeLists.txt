@@ -24,7 +24,9 @@ find_package(OpenCV REQUIRED)
 find_package(fmt REQUIRED)
 
 add_library(tensorrt_cpp_api SHARED
-        src/engine.cpp)
+        src/engine.cpp
+        src/yolov8n_face.cpp
+        )
 
 target_include_directories(tensorrt_cpp_api PUBLIC ${OpenCV_INCLUDE_DIRS} ${CUDA_INCLUDE_DIRS} ${TensorRT_INCLUDE_DIRS} include include/interfaces . )
 target_link_libraries(tensorrt_cpp_api PUBLIC ${OpenCV_LIBS} ${CUDA_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT} ${TensorRT_LIBRARIES} fmt::fmt)

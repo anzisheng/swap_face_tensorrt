@@ -51,7 +51,7 @@ class YoloV8_face
 
     //Detect the object in the image
     std::vector<Object> detectObjects(const cv::Mat &inputImageBGR);
-    std::vector<Object> detectObjects(congst cv::cuda::GpuMat&inputImageBGR);
+    std::vector<Object> detectObjects(const cv::cuda::GpuMat& inputImageBGR);
 
     //Draw the object bounding box and labels on the image
     void drawObjectLabels(cv::Mat &image, const std::vector<Object> &objects, unsigned int scale = 2);
