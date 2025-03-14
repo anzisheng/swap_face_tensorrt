@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.18)
 project(tensorrt_cpp_api)
+add_definitions(-DSHOW) #定义宏：SHOW
 set(cmake_build_type debug)
 # Use ccache to speed up rebuilds
 include(cmake/ccache.cmake)

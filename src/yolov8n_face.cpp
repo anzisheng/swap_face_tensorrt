@@ -67,42 +67,69 @@ YoloV8_face::YoloV8_face(const std::string &onnxModelPath, const YoloV8Config &c
     }
 }
     
-std::vector<Object> YoloV8_face::detectObjects(const cv::cuda::GpuMat& inputImageBGR){
+std::vector<Object> YoloV8_face::detectObjects(const cv::cuda::GpuMat &inputImageBGR) {
+    // Preprocess the input image
+#ifdef ENABLE_BENCHMARKS
+    static int numIts = 1;
+    preciseStopwatch s1;
+#endif
     const auto input = preprocess(inputImageBGR);
-    
-    std::vector<std::vector<std::vector<float>>> featureVectors; 
+#ifdef ENABLE_BENCHMARKS
+    static long long t1 = 0;
+    t1 += s1.elapsedTime<long long, std::chrono::microseconds>();
+    std::cout << "Avg Preprocess time: " << (t1 / numIts) / 1000.f << " ms" << std::endl;
+#endif
+    // Run inference using the TensorRT engine
+#ifdef ENABLE_BENCHMARKS
+    preciseStopwatch s2;
+#endif
+    std::vector<std::vector<std::vector<float>>> featureVectors;
     auto succ = m_trtEngine->runInference(input, featureVectors);
-    //check if our model does only detect object detection
+    if (!succ) {
+        throw std::runtime_error("Error: Unable to run inference.");
+    }
+#ifdef ENABLE_BENCHMARKS
+    static long long t2 = 0;
+    t2 += s2.elapsedTime<long long, std::chrono::microseconds>();
+    std::cout << "Avg Inference time: " << (t2 / numIts) / 1000.f << " ms" << std::endl;
+    preciseStopwatch s3;
+#endif
+    // Check if our model does only object detection or also supports segmentation
     std::vector<Object> ret;
     const auto &numOutputs = m_trtEngine->getOutputDims().size();
-    if (numOutputs == 1)
-    {
-        //does only object detection, no segmetatio  and no pose
-        //Since we have a batch size of 1 and only 1 output,
-        //we must convert  the output from a 3d array to a 1d array
-        std::vector<float> featureVector;   
+    //std::cout << "yolo_face numOutputs shape:" << m_trtEngine->getOutputDims()[1].size()<<std::endl;
+    std::cout << "yolo_face numOutputs:" << numOutputs<<std::endl;
+    if (numOutputs == 1) {
+        // Object detection or pose estimation
+        // Since we have a batch size of 1 and only 1 output, we must convert the output from a 3D array to a 1D array.
+        std::vector<float> featureVector;
         Engine<float>::transformOutput(featureVectors, featureVector);
 
         const auto &outputDims = m_trtEngine->getOutputDims();
-        int numChannels = outputDims[outputDims.size() -1].d[1];
-        if (numChannels == 56)
-        {
-            //pose estimation
-        }
-        else
-        {
-            //object detection
+        int numChannels = outputDims[outputDims.size() - 1].d[1];
+        std::cout << "yolo_face numOutputs numChannels:" << numChannels<<std::endl;
+        // TODO: Need to improve this to make it more generic (don't use magic number).
+        // For now it works with Ultralytics pretrained models.
+        if (numChannels == 56) {
+            // Pose estimation
+            //ret = postprocessPose(featureVector);
+        } else {
+            // Object detection
+            std::cout << "yes, yolo_face detection" <<std::endl;
             ret = postprocessDetect(featureVector);
         }
+    } else {
+        // Segmentation
+        // Since we have a batch size of 1 and 2 outputs, we must convert the output from a 3D array to a 2D array.
         
-
     }
-    else
-    {
-        //segmentation
-    }
+#ifdef ENABLE_BENCHMARKS
+    static long long t3 = 0;
+    t3 += s3.elapsedTime<long long, std::chrono::microseconds>();
+    std::cout << "Avg Postprocess time: " << (t3 / numIts++) / 1000.f << " ms\n" << std::endl;
+#endif
     return ret;
-}    
+}
 
 std::vector<Object> YoloV8_face::detectObjects(const cv::Mat &inputImageBGR)
 {
@@ -112,8 +139,6 @@ std::vector<Object> YoloV8_face::detectObjects(const cv::Mat &inputImageBGR)
 
     //call detectObjects with the GPU image
     return detectObjects(gpuImg);
-
-
 }
 
 
@@ -124,40 +149,52 @@ std::vector<Object> YoloV8_face::postprocessDetect(std::vector<float> &featureVe
     auto numAnchors = outputDims[0].d[2];
 
     auto numClasses = CLASS_NAMES.size();
+
     std::vector<cv::Rect> bboxes;
     std::vector<float> scores;
     std::vector<int> labels;
     std::vector<int> indices;
 
     cv::Mat output = cv::Mat(numChannels, numAnchors, CV_32F, featureVector.data());
-    output = output.t(); //转置
-    //Get all the YOLO proposals
-    for(int i = 0; i < numAnchors; i++){
-       auto rowPtr = output.row(i).ptr<float>();
-       auto bboxesPtr = rowPtr;
-       auto scoresPtr = rowPtr + 4;
-       auto maxSPtr = std::max_element(scoresPtr, scoresPtr + numClasses);
-       float score = *maxSPtr;
-       if (score> PROBABILITY_THRESHOLD)
-       {
-        float x = *bboxesPtr++;
-        float y = *bboxesPtr++;
-        float w = *bboxesPtr++;
-        float h = *bboxesPtr;        
+    output = output.t();
 
-        float x0 = std::clamp((x - 0.5f * w) * m_ratio, 0.f, m_imgWidth);
-        float y0 = std::clamp((y - 0.5f * h) * m_ratio, 0.f, m_imgHeight);
-        float x1 = std::clamp((x + 0.5f * w) * m_ratio, 0.f, m_imgWidth);
-        float y1 = std::clamp((y + 0.5f * h) * m_ratio, 0.f, m_imgHeight);
+    // Get all the YOLO proposals
+    for (int i = 0; i < numAnchors; i++) {
+        auto rowPtr = output.row(i).ptr<float>();
+        auto bboxesPtr = rowPtr;
+        auto scoresPtr = rowPtr + 4;
+        auto maxSPtr = std::max_element(scoresPtr, scoresPtr + numClasses);
+        float score = *maxSPtr;
+        if (score > PROBABILITY_THRESHOLD) {
+            float x = *bboxesPtr++;
+            float y = *bboxesPtr++;
+            float w = *bboxesPtr++;
+            float h = *bboxesPtr;
 
-   
-       }
-       
+            float x0 = std::clamp((x - 0.5f * w) * m_ratio, 0.f, m_imgWidth);
+            float y0 = std::clamp((y - 0.5f * h) * m_ratio, 0.f, m_imgHeight);
+            float x1 = std::clamp((x + 0.5f * w) * m_ratio, 0.f, m_imgWidth);
+            float y1 = std::clamp((y + 0.5f * h) * m_ratio, 0.f, m_imgHeight);
+
+            int label = maxSPtr - scoresPtr;
+            cv::Rect_<float> bbox;
+            bbox.x = x0;
+            bbox.y = y0;
+            bbox.width = x1 - x0;
+            bbox.height = y1 - y0;
+
+            bboxes.push_back(bbox);
+            labels.push_back(label);
+            scores.push_back(score);
+        }
     }
- // Run NMS
- cv::dnn::NMSBoxes(bboxes, scores, /*labels,*/ PROBABILITY_THRESHOLD, NMS_THRESHOLD, indices);
- std::vector<Object> objects;   
-   // Choose the top k detections
+
+    // Run NMS
+    cv::dnn::NMSBoxes(bboxes, scores, /*labels,*/ PROBABILITY_THRESHOLD, NMS_THRESHOLD, indices);
+
+    std::vector<Object> objects;
+
+    // Choose the top k detections
     int cnt = 0;
     for (auto &chosenIdx : indices) {
         if (cnt >= TOP_K) {
@@ -177,4 +214,63 @@ std::vector<Object> YoloV8_face::postprocessDetect(std::vector<float> &featureVe
 
 }
 
+void YoloV8_face::drawObjectLabels(cv::Mat &image, const std::vector<Object> &objects, unsigned int scale) {
+    // If segmentation information is present, start with that
+    std::cout << "object size: "<< objects.size() <<std::endl;
+    if (!objects.empty() && !objects[0].boxMask.empty()) {
+        cv::Mat mask = image.clone();
+        for (const auto &object : objects) {
+            // Choose the color
+            //int colorIndex = object.label % COLOR_LIST.size(); // We have only defined 80 unique colors
+            cv::Scalar color = cv::Scalar(1, 1, 1);
+
+            // Add the mask for said object
+            mask(object.rect).setTo(color * 255, object.boxMask);
+        }
+        // Add all the masks to our image
+        cv::addWeighted(image, 0.5, mask, 0.8, 1, image);
+    }
+
+    // Bounding boxes and annotations
+    for (auto &object : objects) {
+        // Choose the color
+        //int colorIndex = object.label % .size(); // We have only defined 80 unique colors
+        cv::Scalar color = cv::Scalar(1, 1, 1);
+        float meanColor = cv::mean(color)[0];
+        cv::Scalar txtColor;
+        if (meanColor > 0.5) {
+            txtColor = cv::Scalar(0, 0, 0);
+        } else {
+            txtColor = cv::Scalar(255, 255, 255);
+        }
+
+        const auto &rect = object.rect;
+
+        // Draw rectangles and text
+        char text[256];
+        sprintf(text, "%s %.1f%%", CLASS_NAMES[object.label].c_str(), object.probability * 100);
+
+        int baseLine = 0;
+        cv::Size labelSize = cv::getTextSize(text, cv::FONT_HERSHEY_SIMPLEX, 0.35 * scale, scale, &baseLine);
+
+        cv::Scalar txt_bk_color = color * 0.7 * 255;
+
+        int x = object.rect.x;
+        int y = object.rect.y + 1;
+        //std::cout <<"box by trt is "<<x<< "  "<<y<<"  " << labelSize.width<<"  " << labelSize.height + baseLine << std::endl;
+        
+//#ifdef SHOW
+        
+        cv::rectangle(image, rect, color * 255, scale + 1);
+        std::cout << "draw......" << std::endl;
+        cv::imwrite("abc.jpg", image);
+
+        cv::rectangle(image, cv::Rect(cv::Point(x, y), cv::Size(labelSize.width, labelSize.height + baseLine)), txt_bk_color, -1);
+
+        cv::putText(image, text, cv::Point(x, y + labelSize.height), cv::FONT_HERSHEY_SIMPLEX, 0.35 * scale, txtColor, scale);
+//#endif
+        // Pose estimation
+        
+    }
+}
 
