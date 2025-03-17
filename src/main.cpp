@@ -5,6 +5,7 @@
 #include <opencv2/cudaimgproc.hpp>
 #include <opencv2/opencv.hpp>
 #include "yolov8n_face.h"
+#include "Face68LandMarks_trt.h"
 
 extern std::string g_token = "";
 
@@ -32,5 +33,23 @@ int main(int argc, char *argv[]) {
 
 
     #endif
+    Face68Landmarks_trt detect_68landmarks_net_trt("2dfan4.onnx", config);
+
+    std::vector<cv::Point2f> face_landmark_5of68_trt;
+    std::vector<cv::Point2f> face68landmarks_trt = detect_68landmarks_net_trt.detectlandmark(source_img, object[0], face_landmark_5of68_trt);
+
+    #ifdef SHOW
+    std::cout << "\nface68landmarks_trt size: " <<face68landmarks_trt.size()<<std::endl;
+    std::cout << "face_landmark_5of68_trt size: " <<face_landmark_5of68_trt.size()<<std::endl;
+    // for(int i =0; i < face68landmarks_trt.size(); i++)
+	// {
+    //     cout << face68landmarks_trt[i] << " ";
+	// }    
+    // for(int i =0; i < face_landmark_5of68_trt.size(); i++)
+	// {
+    //     cout << face_landmark_5of68_trt[i] << " ";
+	// }
+    #endif
+
     return 0;
 }
