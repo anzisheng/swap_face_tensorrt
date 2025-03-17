@@ -263,7 +263,7 @@ void YoloV8_face::drawObjectLabels(cv::Mat &image, const std::vector<Object> &ob
         
         cv::rectangle(image, rect, color * 255, scale + 1);
         std::cout << "draw......" << std::endl;
-        cv::imwrite("abc.jpg", image);
+        //cv::imwrite("abc.jpg", image);
 
         cv::rectangle(image, cv::Rect(cv::Point(x, y), cv::Size(labelSize.width, labelSize.height + baseLine)), txt_bk_color, -1);
 
