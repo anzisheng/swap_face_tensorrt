@@ -55,6 +55,30 @@ int main(int argc, char *argv[]) {
     vector<float> source_face_embedding = face_embedding_net_trt.detect(source_img, face_landmark_5of68_trt);
     std::cout << "\nsource_face_embedding size: " << source_face_embedding.size() <<endl;
 
-    
-    return 0;
+   /////////////////////////////////////////////////////////////////////////////////////
+   std::string targetImage = "12.jpg"; 
+   cv::Mat target_img = cv::imread(targetImage);
+   cv::Mat target_img2 =target_img.clone();
+
+   std::vector<Object>objects_target = yoloV8.detectObjects(target_img);
+
+#ifdef SHOW
+    // Draw the bounding boxes on the image
+    yoloV8.drawObjectLabels(target_img2, objects_target);
+    cout << "Detected " << objects_target.size() << " objects" << std::endl;
+    // Save the image to disk
+    auto target_image_name = targetImage.substr(0, targetImage.find_last_of('.'));
+    g_token = target_image_name;
+    std::cout << "target:::::"<<g_token << std::endl;
+    //const auto outputName_target = outputImage.substr(0, outputImage.find_last_of('.')) + "_annotated.jpg";
+    const auto outputName_target = g_token + "_annotated.jpg";
+    cv::imwrite(outputName_target, target_img2);
+    std::cout << "Saved annotated image to: " << outputName_target << std::endl;
+#endif
+    int position = 0; ////一张图片里可能有多个人脸，这里只考虑1个人脸的情况
+	vector<Point2f> target_landmark_5(5);    
+    //得到目标人脸的landmark
+	detect_68landmarks_net_trt.detectlandmark(target_img, objects_target[position], target_landmark_5);
+
+   return 0;
 }

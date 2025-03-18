@@ -110,14 +110,7 @@ std::vector<float> FaceEmbdding_trt::postprocess(std::vector<float> &featureVect
 
     //auto numAnchors = outputDims[0].d[2];
     vector<float> embedding(numChannels);
-    //memcpy(embedding.data(), pdata, len_feature*sizeof(float));
     cudaMemcpy(embedding.data(), pdata, numChannels*sizeof(float), cudaMemcpyHostToHost); //import not cudaMemcpyDeviceToHost
-    //cout << "cuda copy to host:"<<endl;
-    // for(int i = 0 ; i < embedding.size(); i++)
-    // {
-    //     cout << embedding[i] << "  ";
-    // }
-    // cout <<endl;
 
     return embedding;
 }
