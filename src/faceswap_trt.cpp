@@ -78,11 +78,11 @@ SwapFace_trt::SwapFace_trt(string model_path, const YoloV8Config &config, int me
     const int length = this->len_feature*this->len_feature;
     this->model_matrix = new float[length];
     //cout<<"start read model_matrix.bin"<<endl;
+    cout << "before  /model_matrix.bin"<<endl;
     FILE* fp = fopen("./model_matrix.bin", "rb");
     size_t ret = fread(this->model_matrix, sizeof(float), length, fp);//导入数据
     if (ret) {}
     fclose(fp);//关闭文件
-    //cout<<"read model_matrix.bin finish"<<endl;
 
     ////在这里就直接定义了，没有像python程序里的那样normed_template = TEMPLATES.get(template) * crop_size
     this->normed_template.emplace_back(Point2f(46.29459968, 51.69629952));
@@ -91,7 +91,6 @@ SwapFace_trt::SwapFace_trt(string model_path, const YoloV8Config &config, int me
     this->normed_template.emplace_back(Point2f(49.54930048, 92.36550016));
     this->normed_template.emplace_back(Point2f(78.72989952, 92.20409984));
 
-    //cout<<"normed_template assign values"<<endl;
 
 }
 

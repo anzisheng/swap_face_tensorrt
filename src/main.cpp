@@ -7,7 +7,8 @@
 #include "yolov8n_face.h"
 #include "Face68LandMarks_trt.h"
 #include "facerecognizer_trt.h"
-
+#include "faceswap_trt.h"
+#include "faceenhancer_trt.h"
 extern std::string g_token = "";
 
 int main(int argc, char *argv[]) {
@@ -80,5 +81,23 @@ int main(int argc, char *argv[]) {
     //得到目标人脸的landmark
 	detect_68landmarks_net_trt.detectlandmark(target_img, objects_target[position], target_landmark_5);
 
-   return 0;
+    ////////////////////////////////////////////////
+    SwapFace_trt swap_face_net_trt("inswapper_128.onnx", config, 1);
+    samplesCommon::BufferManager buffers(swap_face_net_trt.m_trtEngine_faceswap->m_engine);
+    
+    FaceEnhance_trt enhance_face_net_trt("gfpgan_1.4.onnx", config, 1);
+    samplesCommon::BufferManager buffers_enhance(enhance_face_net_trt.m_trtEngine_enhance->m_engine);
+
+    cv::Mat swapimg = swap_face_net_trt.process(target_img, source_face_embedding, target_landmark_5, buffers);
+    //imwrite("target_img.jpg", target_img);
+//#ifdef SHOW        
+    //std::cout << "swap_face_net.process end" <<std::endl;
+    //imwrite("swapimg.jpg", swapimg);
+//#endif    
+    
+    cv::Mat resultimg = enhance_face_net_trt.process(swapimg, target_landmark_5, buffers_enhance);
+    
+    imwrite("resultimgend.jpg", resultimg);
+
+    return 0;
 }
