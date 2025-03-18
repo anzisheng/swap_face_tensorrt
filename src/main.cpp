@@ -6,6 +6,7 @@
 #include <opencv2/opencv.hpp>
 #include "yolov8n_face.h"
 #include "Face68LandMarks_trt.h"
+#include "facerecognizer_trt.h"
 
 extern std::string g_token = "";
 
@@ -50,6 +51,9 @@ int main(int argc, char *argv[]) {
     //     cout << face_landmark_5of68_trt[i] << " ";
 	// }
     #endif
+    FaceEmbdding_trt face_embedding_net_trt("arcface_w600k_r50.onnx", config);
+    vector<float> source_face_embedding = face_embedding_net_trt.detect(source_img, face_landmark_5of68_trt);
+    std::cout << "\nsource_face_embedding size: " << source_face_embedding.size() <<endl;
 
     
     return 0;
